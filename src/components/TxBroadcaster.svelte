@@ -14,6 +14,7 @@
 
     // blockchain
     let provider;
+    let wallet;
 
     // transactions
     let signed_transactions:string = "";
@@ -33,6 +34,12 @@
         // get provider
         provider = new ethers.providers.JsonRpcProvider("https://proxy.roninchain.com/free-gas-rpc", 2020);
         //provider = new ethers.providers.JsonRpcProvider("https://api.roninchain.com/rpc", 2021);
+
+        // get wallet from mnemonic
+        let account_path = `m/44'/60'/0'/0/${0}`;
+        let TEST_SEED = "rural control flavor ability van shrimp pig garment baby clarify express submit";
+        wallet = ethers.Wallet.fromMnemonic(TEST_SEED, account_path)
+        wallet = wallet.connect(provider);
     }
 
 
@@ -85,7 +92,7 @@
             await sleep(80);
 
             // sends transaction
-            let result_promise = provider.sendTransaction(signed_tx);
+            let result_promise = wallet.sendTransaction(signed_tx);
 
             // TX created
             setTxResultOnMap(i, "success", "tx_created", result_promise);
