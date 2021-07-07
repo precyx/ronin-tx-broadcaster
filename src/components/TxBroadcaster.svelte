@@ -36,10 +36,6 @@
         //provider = new ethers.providers.JsonRpcProvider("https://api.roninchain.com/rpc", 2021);
 
         // get wallet from mnemonic
-        let account_path = `m/44'/60'/0'/0/${0}`;
-        let TEST_SEED = "rural control flavor ability van shrimp pig garment baby clarify express submit";
-        wallet = ethers.Wallet.fromMnemonic(TEST_SEED, account_path)
-        wallet = wallet.connect(provider);
     }
 
 
@@ -91,34 +87,33 @@
 
             await sleep(80);
 
-            // sends transaction
-            let result_promise = wallet.sendTransaction(signed_tx);
-
-            // TX created
-            setTxResultOnMap(i, "success", "tx_created", result_promise);
-
-            result_promise.then(tx_result => {
-
-                // TX sent
-                setTxResultOnMap(i, "success", "tx_sent", tx_result);
-
-                tx_result.wait().then(tx_confirmed => {
-
-                    // TX confirmed
-                    setTxResultOnMap(i, "success", "tx_confirmed", tx_confirmed);
-
-                }).catch(err => {
-
-                    // TX confirm error
-                    setTxResultOnMap(i, "error", "tx_confirm_error", err);
-
-                })
-            }).catch(err => {
-
-                // TX send error
+            let tx_result = null;
+            try {
+                setTxResultOnMap(i, "success", "tx_created", null);
+                // created tx
+                tx_result = await provider.sendTransaction(signed_tx);
+            }
+            catch(err){
+                // create tx error
                 setTxResultOnMap(i, "error", "tx_send_error", err);
+            }
 
-            })
+            let tx_confirmed = null;
+            if(tx_result) {
+                try {
+                    setTxResultOnMap(i, "success", "tx_sent", tx_result);
+                    // confirmed tx
+                    tx_confirmed = await tx_result.wait();
+                }
+                catch(err){
+                    // confirm tx error
+                    setTxResultOnMap(i, "error", "tx_confirm_error", err);
+                }
+            }
+
+            if(tx_confirmed) {
+                setTxResultOnMap(i, "success", "tx_confirmed", tx_confirmed);
+            }
         });
 
         loading = false;
@@ -167,7 +162,18 @@
                     <div class="tx">
                         <div style="width:50px; margin-right:20px;">#{i + 1}</div>
                         <div style="width:80px; margin-right:20px;"><span class={`type_tag ${tx.type}`}>{tx.type}</span></div>
-                        <div style="width:100px; margin-right:20px;"><span class="status_tag">{tx.status}</span></div>
+                        <div style="width:100px; margin-right:20px;"><span class={`status_tag ${tx.status}`}>{tx.status}</span></div>
+                        <div style="width:100px; margin-right:20px;">
+
+                            {#if tx.status == "tx_sent" && tx?.data?.hash}
+                                <a target="_blank" href={`https://explorer.roninchain.com/tx/${tx?.data?.hash}`}>TX Link (unconfirmed)</a>
+                            {/if}
+
+                            {#if tx.status == "tx_confirmed" && tx?.data?.transactionHash}
+                                <a target="_blank" href={`https://explorer.roninchain.com/tx/${tx?.data?.transactionHash}`}>TX Link</a>
+                            {/if}
+
+                        </div>
                         <div class="data_field">
                             {JSON.stringify(tx.data)}
                         </div>
@@ -195,6 +201,18 @@
 
     .status_tag {
         font-size:14px;
+        background: #333333;
+        color: white;
+        border-radius: 50px;
+        padding: 2px 15px;
+        display: inline-flex;
+        font-size: 12px;
+    }
+    .status_tag.tx_sent {
+        background:#dba121;
+    }
+    .status_tag.tx_confirmed {
+        background:#4caf50;
     }
 
     .type_tag {
@@ -210,7 +228,7 @@
         background:#cf1a65;
     }
     .type_tag.success{
-        background:#24a267;
+        background:#4caf50;
     }
 
     .txs {
@@ -230,6 +248,7 @@
     .data_field {
         font-size:12px;
         max-width: 500px;
+        overflow-x:auto;
     }
 
     .title2 {
@@ -293,7 +312,7 @@
     .area {
         padding:20px 25px;
         margin:0 auto;
-        max-width:900px;
+        max-width:1200px;
         background: #ffffff;
         border-radius: 14px;
         box-shadow: 0 5px 18px #00000021;
